@@ -23,15 +23,14 @@ async def download_video(url, message: types.Message):
     # Cookies fayl borligini tekshirish
     cookie_file = 'cookies.txt' if os.path.exists('cookies.txt') else None
 
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        ydl_opts = {
+        'format': 'best[ext=mp4]',  # O'ZGARTIRILDI
         'outtmpl': f"downloads/{message.message_id}.mp4",
         'cookiefile': cookie_file,
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        # FFmpeg majburiy emas, lekin sifat uchun yaxshi
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'user_agent': 'Mozilla/5.0 ... (davomi o\'sha)',
     }
 
     try:
