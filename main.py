@@ -3,107 +3,72 @@ import asyncio
 import logging
 import sys
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
 from aiogram.types import FSInputFile
 import yt_dlp
 
-# --- SOZLAMALAR ---
-# Railway Variables dan tokenni oladi.
-# Agar token topilmasa, dastur to'xtaydi.
-BOT_TOKEN = os.getenv("8218779955:AAEknXgba_N355QFgINCiAQ6Kf53zFziMg8")
+# --- ENG MUHIM JOYI ---
+# Tokenni shu yerga yozing. Bo'sh joylar qolmasin!
+BOT_TOKEN = "8218779955:AAEknXgba_N355QFgINCiAQ6Kf53zFziMg8"
+# ----------------------
 
 dp = Dispatcher()
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-# --- INDIKATORLAR ---
-STATUS = {
-    "search": "🔍 Qidirilmoqda...",
-    "download": "⬇️ Yuklab olinmoqda... (Serverga)",
-    "upload": "📤 Sizga yuborilmoqda...",
-    "error": "❌ Xatolik!"
-}
-
 async def download_video(url, message: types.Message):
-    msg = await message.answer(STATUS["search"])
+    msg = await message.answer("🔍 Qidirilmoqda...")
     
-    # Papka borligini tekshirish
     if not os.path.exists("downloads"):
         os.makedirs("downloads")
 
-    # Cookies faylni tekshirish
-    cookie_file = 'cookies.txt'
-    if not os.path.exists(cookie_file):
-        logging.warning("Cookies fayli topilmadi! Bot cookiesiz ishlaydi.")
-        cookie_file = None
-
-    # Fayl nomi (ID orqali)
-    filename = f"downloads/{message.message_id}.mp4"
+    # Cookies fayl borligini tekshirish
+    cookie_file = 'cookies.txt' if os.path.exists('cookies.txt') else None
 
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        'outtmpl': filename,
+        'outtmpl': f"downloads/{message.message_id}.mp4",
         'cookiefile': cookie_file,
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        # FFmpeg joylashuvi (Railwayda avtomatik topiladi)
-        'merge_output_format': 'mp4',
+        # FFmpeg majburiy emas, lekin sifat uchun yaxshi
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     }
 
     try:
-        await msg.edit_text(STATUS["download"])
-        
+        await msg.edit_text("⬇️ Yuklanmoqda...")
         loop = asyncio.get_event_loop()
-        # Videoni yuklash jarayoni
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=True))
-            title = info.get('title', 'Video')
-            
-            # Agar fayl nomi o'zgargan bo'lsa, aniqlaymiz
-            if not os.path.exists(filename):
-                filename = ydl.prepare_filename(info)
+            filename = ydl.prepare_filename(info)
 
-        # Telegramga jo'natish
-        await msg.edit_text(STATUS["upload"])
-        
-        video_file = FSInputFile(filename)
-        caption = f"🎥 <b>{title}</b>\n\n🤖 Bot orqali yuklandi"
-        
-        await message.answer_video(video=video_file, caption=caption, parse_mode="HTML")
+        await msg.edit_text("📤 Yuborilmoqda...")
+        video = FSInputFile(filename)
+        await message.answer_video(video, caption="✅ @BotNomi")
         await msg.delete()
+        
+        if os.path.exists(filename):
+            os.remove(filename)
 
     except Exception as e:
-        # Xatolikni logga chiqarish (Siz Railwayda ko'rishingiz uchun)
-        logging.error(f"Xatolik yuz berdi: {e}")
-        await msg.edit_text(f"{STATUS['error']}\n\nSabab: {str(e)[:100]}")
-    
-    finally:
-        # Serverni tozalash
-        if os.path.exists(filename):
-            try:
-                os.remove(filename)
-            except:
-                pass
-
-@dp.message(Command("start"))
-async def start_handler(message: types.Message):
-    await message.answer("Salom! Menga Instagram, TikTok yoki YouTube linkini tashlang.")
+        await msg.edit_text(f"❌ Xatolik: {e}")
+        if 'filename' in locals() and os.path.exists(filename):
+            os.remove(filename)
 
 @dp.message(F.text)
-async def link_handler(message: types.Message):
-    url = message.text
-    if "http" in url:
-        await download_video(url, message)
+async def run_bot(message: types.Message):
+    if message.text == "/start":
+        await message.answer("Salom! Link yuboring.")
+    elif "http" in message.text:
+        await download_video(message.text, message)
     else:
-        await message.answer("Iltimos, havola (link) yuboring.")
+        await message.answer("Iltimos, havola yuboring.")
 
 async def main():
-    if not BOT_TOKEN:
-        print("DIQQAT: BOT_TOKEN Railway Variables bo'limiga kiritilmagan!")
-        return
+    print("Bot ishga tushmoqda...")
+    # Token tekshiruvi yo'q, to'g'ridan-to'g'ri ulaymiz
     bot = Bot(token=BOT_TOKEN)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
